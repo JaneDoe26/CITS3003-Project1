@@ -317,7 +317,7 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj,angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
 
 
     // Set the model-view matrix for the shaders
@@ -538,9 +538,16 @@ void reshape( int width, int height ) {
     //     of the scene is visible across the width of the window.
 
     GLfloat nearDist = 0.2;
-    projection = Frustum(-nearDist*(float)width/(float)height, nearDist*(float)width/(float)height,
-                         -nearDist, nearDist,
-                         nearDist, 100.0);
+    if (width < height){
+      projection = Frustum(-nearDist, nearDist,
+			   -nearDist*(float)height/(float)width, nearDist*(float)height/(float)width,
+			   nearDist, 100.0) ;
+    }
+    else{
+      projection = Frustum(-nearDist*(float)width/(float)height, nearDist*(float)width/(float)height,
+			   -nearDist, nearDist,
+			   nearDist, 100.0);
+    }
 
 }
 
