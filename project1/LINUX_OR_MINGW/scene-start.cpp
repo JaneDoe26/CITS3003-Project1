@@ -601,8 +601,8 @@ int main( int argc, char* argv[] )
     glutInitWindowSize( windowWidth, windowHeight );
 
     glutInitContextVersion( 3, 2);
-    glutInitContextProfile( GLUT_CORE_PROFILE );        // May cause issues, sigh, but you
-    //glutInitContextProfile( GLUT_COMPATIBILITY_PROFILE ); // should still use only OpenGL 3.2 Core
+    //glutInitContextProfile( GLUT_CORE_PROFILE );        // May cause issues, sigh, but you
+    glutInitContextProfile( GLUT_COMPATIBILITY_PROFILE ); // should still use only OpenGL 3.2 Core
                                                           // features.
     glutCreateWindow( "Initialising..." );
 
