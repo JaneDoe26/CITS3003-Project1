@@ -1,4 +1,4 @@
-
+ 
 #include "Angel.h"
 
 #include <stdlib.h>
@@ -32,6 +32,15 @@ static float camRotUpAndOverDeg=20; // rotates the camera up and over the centre
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
+//--------------------------------------------------------------------------------------------------------------------------------
+//PART A VARIABLES
+
+mat4 translateView; //matrix for camera traslation in the z direction - set in display function
+mat4 rotateViewY; // matrix for rotation horizontally - set in display function
+mat4 rotateViewX; // matrix for rotation vertially - set in display function
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 // These are used to set the window title
 char lab[] = "Project1";
 char *programName = NULL; // Set in main 
@@ -47,6 +56,8 @@ GLuint vaoIDs[numMeshes]; // and a corresponding VAO ID from glGenVertexArrays
 //                      (numTextures is defined in gnatidread.h)
 texture* textures[numTextures]; // An array of texture pointers - see gnatidread.h
 GLuint textureIDs[numTextures]; // Stores the IDs returned by glGenTextures
+
+
 
 
 // ------Scene Objects----------------------------------------------------
@@ -284,6 +295,17 @@ void init( void )
     sceneObjs[1].scale = 0.1;
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
+    
+    //-------------------------------------------------------------------------------------------------------------------------------------------------------------
+   // PART I: Creating Light Object
+    
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(3.0, 1.0, 1.0, 1.0); //slightly different location to first light
+    sceneObjs[2].scale = 0.1;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+    
+    //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -343,23 +365,61 @@ display( void )
 // Set the view matrix.  To start with this just moves the camera backwards.  You'll need to
 // add appropriate rotations.
 
+//--------------------------------------------------------------------------------------------------------------------------------------
+
+//PART A HERE: ROTATING CAMERA
 
 
-    view = Translate(0.0, 0.0, -viewDist);
+   translateView = Translate(0.0, 0.0, -viewDist);
+   rotateViewY = RotateY(camRotSidewaysDeg); 
+   rotateViewX = RotateX(camRotUpAndOverDeg); 
+   
+   view = translateView*rotateViewY*rotateViewX; //Double check if in the right order
+    
+
+ //--------------------------------------------------------------------------------------------------------------------------------------
 
 
     SceneObject lightObj1 = sceneObjs[1]; 
     vec4 lightPosition = view * lightObj1.loc ;
 
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition); CheckError();
+    //glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition + lightPosition2); CheckError();
+    
+    //---------------------------------------------------------------------------------------------------------------------
+    
+    //PART I: Make light 2 directional
+    
+   SceneObject lightObj2 = sceneObjs[2]; 
+   vec4 lightPosition2 = view*lightObj2.loc;
+
+   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition + ); CheckError();
+
+    
+    //what does the gluniform line do?
+    
+    //------------------------------------------------------------------------------------------------------------------------
+    
+    
 
     for(int i=0; i<nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
         vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
+	
+	//-------------------------------------------------------------------------------------------------------------------
+	//PART I
+	
+	vec3 rgb2 = so.rgb * lightObj2.rgb * so.brightness * lightObj2.brightness * 2.0;
+	
+	//---------------------------------------------------------------------------------------------------------------------
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb ); CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
         glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb );
+
+        glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb2 ); CheckError();
+        glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb2 );
+        glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb2 );
+
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine ); CheckError();
 
         drawMesh(sceneObjs[i]);
@@ -406,14 +466,25 @@ static void adjustBlueBrightness(vec2 bl_br)
 	    toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
+    }
+			 
+//-------------------------------------------------------------------------------------------------------------------------
 
-    } else if(id>=71 && id<=74) {
+    else if (id == 80) {
+	    toolObj = 2;
+        setToolCallbacks(adjustLocXZ, camRotZ(),
+                         adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
+      }
+
+//------------------------------------------------------------------------------------------------------------------------
+
+    else if(id>=71 && id<=74) {
 	    toolObj = 1;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
 
-    else { printf("Error in lightMenu\n"); exit(1); }
+    else { printf("Error in lightMenu\n%d\n", id); exit(1); }
 }
 
 static int createArrayMenu(int size, const char menuEntries[][128], void(*menuFn)(int)) {
@@ -434,6 +505,18 @@ static int createArrayMenu(int size, const char menuEntries[][128], void(*menuFn
     }
     return menuId;
 }
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Part C: Functions for getTolCallbacks
+
+
+static void adjustAmbientDiffuse(vec2 mag)
+	{ sceneObjs[currObject].ambient+=mag[0]; sceneObjs[currObject].diffuse+=mag[1]; }
+	
+static void adjustSpecularShine(vec2 mag)
+	{ sceneObjs[currObject].specular+=mag[0]; sceneObjs[currObject].shine+=mag[1]; }  //What should mag really be called?
+	
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 static void materialMenu(int id) {
   deactivateTool();
@@ -443,8 +526,19 @@ static void materialMenu(int id) {
      setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                       adjustBlueBrightness, mat2(1, 0, 0, 1) );
   }
-  // You'll need to fill in the remaining menu items here.					    
-					  
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+//PART C HERE: Changes to material menu function
+
+  if(id == 20) {
+    toolObj = currObject;
+   setToolCallbacks(adjustAmbientDiffuse, mat2(1, 0, 0, 1), adjustSpecularShine, mat2(5, 0, 0, 1)); //What should the matrices be?
+  }
+
+ //-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
   else { printf("Error in materialMenu\n"); }
 }
 
@@ -453,8 +547,9 @@ static void adjustAngleYX(vec2 angle_yx)
 
 static void adjustAngleZTexscale(vec2 az_ts) 
   {  sceneObjs[currObject].angles[2]+=az_ts[0]; sceneObjs[currObject].texScale+=az_ts[1]; }
-
-
+  //-------------------------------------------------------------------------------------------------------------------------------------------------------
+  //Additional functionality 
+  
 static void mainmenu(int id) {
     deactivateTool();
     if(id == 41 && currObject>=0) {
@@ -468,15 +563,91 @@ static void mainmenu(int id) {
         setToolCallbacks(adjustAngleYX, mat2(400, 0, 0, -400),
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
+    
+    //---------------------------------------------------------------------------------------------------------------------------------------------
+    //ADDITIONAL FUNCTIONALITY
+    
+    if(id == 100) {
+      toolObj = currObject = nObjects--;
+      glutPostRedisplay(); 
+    }
+     
+    
+    if (id == 101) {   
+
+ addObject(sceneObjs[nObjects -1].meshId);
+ toolObj = currObject;
+      
+  sceneObjs[toolObj].rgb[0] = sceneObjs[toolObj - 1].rgb[0]; 
+  sceneObjs[toolObj].rgb[1] = sceneObjs[toolObj - 1].rgb[1];
+  sceneObjs[toolObj].rgb[2] = sceneObjs[toolObj - 1].rgb[2];
+  sceneObjs[toolObj].brightness = sceneObjs[toolObj - 1].brightness;
+
+  sceneObjs[toolObj].diffuse = sceneObjs[toolObj - 1].diffuse; 
+  sceneObjs[toolObj].specular = sceneObjs[toolObj - 1].specular;
+  sceneObjs[toolObj].ambient = sceneObjs[toolObj - 1].brightness;
+  sceneObjs[toolObj].shine = sceneObjs[toolObj - 1].shine;
+
+  sceneObjs[toolObj].angles[0] = sceneObjs[toolObj - 1].angles[0]; 
+  sceneObjs[toolObj].angles[1] = sceneObjs[toolObj - 1].angles[1];
+  sceneObjs[toolObj].angles[2] = sceneObjs[toolObj - 1].angles[2];
+
+  sceneObjs[toolObj].texId = sceneObjs[toolObj - 1].texId;
+  sceneObjs[toolObj].texScale = sceneObjs[toolObj - 1].texScale;
+
+  
+  setToolCallbacks(adjustLocXZ, camRotZ(),
+                   adjustScaleY, mat2(0.05, 0, 0, 10.0) );
+  
+	 glutPostRedisplay();
+    }
+    
+   
+   
+   if (id == 102) {
+      int n = nObjects;
+      while (n>=2) {
+	toolObj = n;
+	sceneObjs[n].loc = vec4(0.0, 0.0, 0.5, 1.0);
+	glutPostRedisplay();
+	n--;
+      }
+    }
+    
+    //SCALE OBJECTS TOGETHER ATTEMPT
+      
+  // if (id == 103) {
+    // vec4 saveLocation = sceneObjs[toolObj].loc;
+   //  vec4 saveLocation2 = sceneObjs[toolObj -1].loc;
+   //  
+    //    setToolCallbacks(adjustLocXZ, camRotZ(),
+   //                      adjustScaleY, mat2(0.05, 0, 0, 10) );
+			 
+  //   if (sceneObjs[toolObj].loc != saveLocation) {
+  //     sceneObjs[toolObj - 1].loc = vec4(0.0, 0.0, 0.0, 1.0);
+  //     glutPostRedisplay();
+  //   }
+ //  }
+     
+     
+    
+    //------------------------------------------------------------------------------------------------------------------------------------------------
     if(id == 99) exit(0);
 }
 
 static void makeMenu() {
   int objectId = createArrayMenu(numMeshes, objectMenuEntries, objectMenu);
+ 
 
   int materialMenuId = glutCreateMenu(materialMenu);
   glutAddMenuEntry("R/G/B/All",10);
-  glutAddMenuEntry("UNIMPLEMENTED: Ambient/Diffuse/Specular/Shine",20);
+  
+  //-------------------------------------------------------------------------------------------------------------------------------------------------
+  //PART C HERE: Changes to MakeMenu function
+  
+  glutAddMenuEntry("Ambient/Diffuse/Specular/Shine", 20); //the "20" is the number returned to the materialMenu function
+ 
+  //--------------------------------------------------------------------------------------------------------------------------------------------------
 
   int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
   int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
@@ -496,6 +667,21 @@ static void makeMenu() {
   glutAddSubMenu("Texture",texMenuId);
   glutAddSubMenu("Ground Texture",groundMenuId);
   glutAddSubMenu("Lights",lightMenuId);
+  
+  //------------------------------------------------------------------------------------------------------------------------------------------------------
+  //ADDITIONAL FUNCTIONALITY
+  
+  glutAddMenuEntry("Remove Object", 100);
+  
+  glutAddMenuEntry("Duplicate Object", 101);
+  
+  glutAddMenuEntry("Group Objects", 102);
+  
+  glutAddMenuEntry("Scale Objects Together", 103);
+ 
+  //------------------------------------------------------------------------------------------------------------------------------------------------------
+  
+  
   glutAddMenuEntry("EXIT", 99);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
