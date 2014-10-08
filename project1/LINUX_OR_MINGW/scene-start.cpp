@@ -32,14 +32,9 @@ static float camRotUpAndOverDeg=20; // rotates the camera up and over the centre
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
-//--------------------------------------------------------------------------------------------------------------------------------
-//PART A VARIABLES
-
 mat4 translateView; //matrix for camera traslation in the z direction - set in display function
 mat4 rotateViewY; // matrix for rotation horizontally - set in display function
 mat4 rotateViewX; // matrix for rotation vertially - set in display function
-
-//--------------------------------------------------------------------------------------------------------------------------------
 
 // These are used to set the window title
 char lab[] = "Project1";
@@ -56,9 +51,6 @@ GLuint vaoIDs[numMeshes]; // and a corresponding VAO ID from glGenVertexArrays
 //                      (numTextures is defined in gnatidread.h)
 texture* textures[numTextures]; // An array of texture pointers - see gnatidread.h
 GLuint textureIDs[numTextures]; // Stores the IDs returned by glGenTextures
-
-
-
 
 // ------Scene Objects----------------------------------------------------
 //
@@ -84,9 +76,6 @@ int nObjects=0; // How many objects are currenly in the scene.
 int currObject=-1; // The current object
 int toolObj = -1;  // The object currently being modified
 
-
-
-
 //------------------------------------------------------------
 // Loads a texture by number, and binds it for later use.  
 void loadTextureIfNotAlreadyLoaded(int i) {
@@ -110,7 +99,6 @@ void loadTextureIfNotAlreadyLoaded(int i) {
 
     glBindTexture(GL_TEXTURE_2D, 0); CheckError(); // Back to default texture
 }
-
 
 //------Mesh loading ----------------------------------------------------
 //
@@ -175,8 +163,7 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
     CheckError();
 }
 
-
-// --------------------------------------
+// -----------------------------------------------------------------------------
 static void mouseClickOrScroll(int button, int state, int x, int y) {
     if(button==GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
          if(glutGetModifiers()!=GLUT_ACTIVE_SHIFT) activateTool(button);
@@ -296,16 +283,12 @@ void init( void )
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
     
-    //-------------------------------------------------------------------------------------------------------------------------------------------------------------
-   // PART I: Creating Light Object
-    
     addObject(55); // Sphere for the second light
     sceneObjs[2].loc = vec4(3.0, 1.0, 1.0, 1.0); //slightly different location to first light
     sceneObjs[2].scale = 0.1;
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
     
-    //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -339,12 +322,10 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(-sceneObj.angles[0]) * RotateY(-sceneObj.angles[1]) * RotateZ(-sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
-
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
 
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
-
 
     // Activate the VAO for a mesh, loading if needed.
     loadMeshIfNotAlreadyLoaded(sceneObj.meshId); CheckError();
@@ -365,53 +346,32 @@ display( void )
 // Set the view matrix.  To start with this just moves the camera backwards.  You'll need to
 // add appropriate rotations.
 
-//--------------------------------------------------------------------------------------------------------------------------------------
 
-//PART A HERE: ROTATING CAMERA
-
-
+//Camera Rotation
    translateView = Translate(0.0, 0.0, -viewDist);
    rotateViewY = RotateY(camRotSidewaysDeg); 
    rotateViewX = RotateX(camRotUpAndOverDeg); 
    
-   view = translateView*rotateViewY*rotateViewX; //Double check if in the right order
+   view = translateView*rotateViewX*rotateViewY;
     
 
- //--------------------------------------------------------------------------------------------------------------------------------------
+   SceneObject lightObj1 = sceneObjs[1]; //Create light 1
+   vec4 lightPosition = view * lightObj1.loc ;
 
 
-    SceneObject lightObj1 = sceneObjs[1]; 
-    vec4 lightPosition = view * lightObj1.loc ;
-
-    //glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition + lightPosition2); CheckError();
-    
-    //---------------------------------------------------------------------------------------------------------------------
-    
-    //PART I: Make light 2 directional
-    
-   SceneObject lightObj2 = sceneObjs[2]; 
+   SceneObject lightObj2 = sceneObjs[2]; //Create light 2
    vec4 lightPosition2 = view*lightObj2.loc;
 
-   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition ); CheckError();
-
-    
-    //what does the gluniform line do?
-    
-    //------------------------------------------------------------------------------------------------------------------------
-    
+   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition); CheckError();
     
 
     for(int i=0; i<nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
+        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0; //setting red/green/blue values for light 1
 	
-	//-------------------------------------------------------------------------------------------------------------------
-	//PART I
+	vec3 rgb2 = so.rgb * lightObj2.rgb * so.brightness * lightObj2.brightness * 2.0; //setting red/green/blue values for light 2
 	
-	vec3 rgb2 = so.rgb * lightObj2.rgb * so.brightness * lightObj2.brightness * 2.0;
-	
-	//---------------------------------------------------------------------------------------------------------------------
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb ); CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
         glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb );
@@ -452,7 +412,7 @@ static void groundMenu(int id) {
 }
 
 static void adjustBrightnessY(vec2 by) 
-  { sceneObjs[toolObj].brightness+=by[0]; sceneObjs[toolObj].loc[1]+=by[1]; }
+{ sceneObjs[toolObj].brightness+=by[0]; sceneObjs[toolObj].loc[1]+=by[1]; }
 
 static void adjustRedGreen(vec2 rg) 
   { sceneObjs[toolObj].rgb[0]+=rg[0]; sceneObjs[toolObj].rgb[1]+=rg[1]; }
@@ -462,25 +422,27 @@ static void adjustBlueBrightness(vec2 bl_br)
 
   static void lightMenu(int id) {
     deactivateTool();
-    if(id == 70) {
+    if(id == 70) { //Move light 1
 	    toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
     }
-			 
-//-------------------------------------------------------------------------------------------------------------------------
+			
 
-    else if (id == 80) {
+    else if (id == 80) { //Move light 2
 	    toolObj = 2;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
       }
 
-//------------------------------------------------------------------------------------------------------------------------
-
-    else if(id>=71 && id<=74) {
+    else if(id>=71 && id<=74) { //Red/Green/Blue light 1
 	    toolObj = 1;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                         adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
+    }
+    else if(id>=81 && id<=85){ //Red/Green/Blue light 2
+      toolObj=2;
+      setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
 
@@ -505,18 +467,13 @@ static int createArrayMenu(int size, const char menuEntries[][128], void(*menuFn
     }
     return menuId;
 }
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//Part C: Functions for getTolCallbacks
-
 
 static void adjustAmbientDiffuse(vec2 mag)
-	{ sceneObjs[currObject].ambient+=mag[0]; sceneObjs[currObject].diffuse+=mag[1]; }
+	{ sceneObjs[currObject].ambient+=mag[0]; sceneObjs[currObject].diffuse+=mag[1]; } //A function to change the ambient and diffuse values
 	
 static void adjustSpecularShine(vec2 mag)
-	{ sceneObjs[currObject].specular+=mag[0]; sceneObjs[currObject].shine+=mag[1]; }  //What should mag really be called?
+	{ sceneObjs[currObject].specular+=mag[0]; sceneObjs[currObject].shine+=mag[1]; } //A function to change the shine and specular light
 	
-//----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 static void materialMenu(int id) {
   deactivateTool();
@@ -527,31 +484,24 @@ static void materialMenu(int id) {
                       adjustBlueBrightness, mat2(1, 0, 0, 1) );
   }
 
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-//PART C HERE: Changes to material menu function
 
   if(id == 20) {
     toolObj = currObject;
-   setToolCallbacks(adjustAmbientDiffuse, mat2(1, 0, 0, 1), adjustSpecularShine, mat2(5, 0, 0, 1)); //What should the matrices be?
+    setToolCallbacks(adjustAmbientDiffuse, mat2(1, 0, 2, 0),
+		      adjustSpecularShine, mat2(1, 0, 3, 0) ); //Assigns functions to left and middle buttons. Matricies determine magnitude of change.
   }
-
- //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
   else { printf("Error in materialMenu\n"); }
 }
-
-// DOM MENU STUFF HERE
 
 static void adjustAngleYX(vec2 angle_yx) 
   {  sceneObjs[currObject].angles[1]+=angle_yx[0]; sceneObjs[currObject].angles[0]+=angle_yx[1]; }
 
 static void adjustAngleZTexscale(vec2 az_ts) 
   {  sceneObjs[currObject].angles[2]+=az_ts[0]; sceneObjs[currObject].texScale+=az_ts[1]; }
-  //-------------------------------------------------------------------------------------------------------------------------------------------------------
-  //Additional functionality 
-  
+
+
 static void mainmenu(int id) {
     deactivateTool();
     if(id == 41 && currObject>=0) {
@@ -566,74 +516,55 @@ static void mainmenu(int id) {
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
     
-    //---------------------------------------------------------------------------------------------------------------------------------------------
-    //ADDITIONAL FUNCTIONALITY
+    if(id == 100) { //Function to Remove Object
     
-    if(id == 100) {
-      toolObj = currObject = nObjects--;
-      glutPostRedisplay(); 
+     nObjects--;
+     toolObj = toolObj -1;
+     currObject = currObject -1; 
     }
      
     
-    if (id == 101) {   
+    if (id == 101) {   //Function to Dupicate Object
 
- addObject(sceneObjs[nObjects -1].meshId);
- toolObj = currObject;
+      int toolObjPrev = toolObj;
+
+      addObject(sceneObjs[toolObj].meshId); //Create another sceneobject with the same meshId as the previous
+      toolObj = currObject;
       
-  sceneObjs[toolObj].rgb[0] = sceneObjs[toolObj - 1].rgb[0]; 
-  sceneObjs[toolObj].rgb[1] = sceneObjs[toolObj - 1].rgb[1];
-  sceneObjs[toolObj].rgb[2] = sceneObjs[toolObj - 1].rgb[2];
-  sceneObjs[toolObj].brightness = sceneObjs[toolObj - 1].brightness;
+      sceneObjs[toolObj].rgb[0] = sceneObjs[toolObjPrev].rgb[0]; //Duplicate the attributes of that object one by one
+      sceneObjs[toolObj].rgb[1] = sceneObjs[toolObjPrev].rgb[1];
+      sceneObjs[toolObj].rgb[2] = sceneObjs[toolObjPrev].rgb[2];
+      sceneObjs[toolObj].brightness = sceneObjs[toolObjPrev].brightness;
 
-  sceneObjs[toolObj].diffuse = sceneObjs[toolObj - 1].diffuse; 
-  sceneObjs[toolObj].specular = sceneObjs[toolObj - 1].specular;
-  sceneObjs[toolObj].ambient = sceneObjs[toolObj - 1].brightness;
-  sceneObjs[toolObj].shine = sceneObjs[toolObj - 1].shine;
+      sceneObjs[toolObj].diffuse = sceneObjs[toolObjPrev].diffuse; 
+      sceneObjs[toolObj].specular = sceneObjs[toolObjPrev].specular;
+      sceneObjs[toolObj].ambient = sceneObjs[toolObjPrev].brightness;
+      sceneObjs[toolObj].shine = sceneObjs[toolObjPrev].shine;
 
-  sceneObjs[toolObj].angles[0] = sceneObjs[toolObj - 1].angles[0]; 
-  sceneObjs[toolObj].angles[1] = sceneObjs[toolObj - 1].angles[1];
-  sceneObjs[toolObj].angles[2] = sceneObjs[toolObj - 1].angles[2];
+      sceneObjs[toolObj].angles[0] = sceneObjs[toolObjPrev].angles[0]; 
+      sceneObjs[toolObj].angles[1] = sceneObjs[toolObjPrev].angles[1];
+      sceneObjs[toolObj].angles[2] = sceneObjs[toolObjPrev].angles[2];
 
-  sceneObjs[toolObj].texId = sceneObjs[toolObj - 1].texId;
-  sceneObjs[toolObj].texScale = sceneObjs[toolObj - 1].texScale;
+      sceneObjs[toolObj].texId = sceneObjs[toolObjPrev].texId;
+      sceneObjs[toolObj].texScale = sceneObjs[toolObjPrev].texScale;
 
   
-  setToolCallbacks(adjustLocXZ, camRotZ(),
-                   adjustScaleY, mat2(0.05, 0, 0, 10.0) );
+      setToolCallbacks(adjustLocXZ, camRotZ(),
+		       adjustScaleY, mat2(0.05, 0, 0, 10.0) );
   
-	 glutPostRedisplay();
+      glutPostRedisplay(); //Redisplay the screen with the attributes changed
     }
-    
-   
-   
-   if (id == 102) {
+     
+   if (id == 102) { //Function to group all objects at one reference point
       int n = nObjects;
-      while (n>=2) {
+      while (n>2) {
 	toolObj = n;
-	sceneObjs[n].loc = vec4(0.0, 0.0, 0.5, 1.0);
-	glutPostRedisplay();
+	sceneObjs[n].loc = vec4(0.0, 0.0, 0.5, 1.0); //put every object at the position specified by this vector. 
 	n--;
       }
     }
-    
-    //SCALE OBJECTS TOGETHER ATTEMPT
-      
-  // if (id == 103) {
-    // vec4 saveLocation = sceneObjs[toolObj].loc;
-   //  vec4 saveLocation2 = sceneObjs[toolObj -1].loc;
-   //  
-    //    setToolCallbacks(adjustLocXZ, camRotZ(),
-   //                      adjustScaleY, mat2(0.05, 0, 0, 10) );
-			 
-  //   if (sceneObjs[toolObj].loc != saveLocation) {
-  //     sceneObjs[toolObj - 1].loc = vec4(0.0, 0.0, 0.0, 1.0);
-  //     glutPostRedisplay();
-  //   }
- //  }
-     
-     
-    
-    //------------------------------------------------------------------------------------------------------------------------------------------------
+   
+   
     if(id == 99) exit(0);
 }
 
@@ -643,14 +574,8 @@ static void makeMenu() {
 
   int materialMenuId = glutCreateMenu(materialMenu);
   glutAddMenuEntry("R/G/B/All",10);
-  
-  //-------------------------------------------------------------------------------------------------------------------------------------------------
-  //PART C HERE: Changes to MakeMenu function
-  
-  glutAddMenuEntry("Ambient/Diffuse/Specular/Shine", 20); //the "20" is the number returned to the materialMenu function
+  glutAddMenuEntry("Ambient/Diffuse/Specular/Shine", 20); //Add this menu entry to the Material Menu submenu.
  
-  //--------------------------------------------------------------------------------------------------------------------------------------------------
-
   int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
   int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
 
@@ -670,26 +595,32 @@ static void makeMenu() {
   glutAddSubMenu("Ground Texture",groundMenuId);
   glutAddSubMenu("Lights",lightMenuId);
   
-  //------------------------------------------------------------------------------------------------------------------------------------------------------
-  //ADDITIONAL FUNCTIONALITY - CAITLIN
-  
   glutAddMenuEntry("Remove Object", 100);
-  
   glutAddMenuEntry("Duplicate Object", 101);
-  
   glutAddMenuEntry("Group Objects", 102);
-  
-  glutAddMenuEntry("Scale Objects Together", 103);
- 
-  //------------------------------------------------------------------------------------------------------------------------------------------------------
-  //ADDITIONAL FUNCTIONALITY - DOM
-  
-  
   glutAddMenuEntry("EXIT", 99);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
 
+// ADDTIONAL FUNCTIONALITY - OBJECT SELECTION
+void increaseObject(void){
+  if(currObject == nObjects-1){
+    toolObj = currObject;
+  }
+  else{
+    toolObj=++currObject;
+  }
+}
+
+void decreaseObject(void){
+  if(currObject == 0){
+    toolObj = currObject;
+  }
+  else{
+    toolObj=--currObject;
+  }
+}
 //----------------------------------------------------------------------------
 
 void
@@ -697,18 +628,22 @@ keyboard( unsigned char key, int x, int y )
 {
     switch ( key ) {
     case 033:
+      printf("goodbye");
         exit( EXIT_SUCCESS );
         break;
+    case 'w':
+      increaseObject();
+      break;
+    case 's':
+      decreaseObject();
+      break;
     }
 }
-
-//----------------------------------------------------------------------------
 
 
 void idle( void ) {
   glutPostRedisplay();
 }
-
 
 
 void reshape( int width, int height ) {
@@ -717,7 +652,6 @@ void reshape( int width, int height ) {
     windowHeight = height;
 
     glViewport(0, 0, width, height);
-
 
 
     // You'll need to modify this so that the view is similar to that in the sample solution.
