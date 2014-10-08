@@ -322,7 +322,7 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(-sceneObj.angles[0]) * RotateY(-sceneObj.angles[1]) * RotateZ(-sceneObj.angles[2]); //Adds in matrix multiplication for rotations, translations and scaling
 
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
@@ -604,7 +604,7 @@ static void makeMenu() {
 
 
 // ADDTIONAL FUNCTIONALITY - OBJECT SELECTION
-void increaseObject(void){
+void increaseObject(void){ //increases the currObject 'pointer' to the next/newer created object
   if(currObject == nObjects-1){
     toolObj = currObject;
   }
@@ -613,7 +613,7 @@ void increaseObject(void){
   }
 }
 
-void decreaseObject(void){
+void decreaseObject(void){ //decreases the currObject pointer to the previous/older created object
   if(currObject == 0){
     toolObj = currObject;
   }
@@ -631,10 +631,10 @@ keyboard( unsigned char key, int x, int y )
       printf("goodbye");
         exit( EXIT_SUCCESS );
         break;
-    case 'w':
+    case 'w': //w key goes to next object
       increaseObject();
       break;
-    case 's':
+    case 's': //s key goes to previous object
       decreaseObject();
       break;
     }

@@ -40,9 +40,9 @@ main()
     vec3 E = normalize( -pos );   // Direction to the eye/camera
     vec3 H = normalize( L + E );  // Halfway vector
 
-    vec3 L2 = normalize( Lvec2 );   // Direction to the light source
-    vec3 E2 = normalize( -pos2 );   // Direction to the eye/camera
-    vec3 H2 = normalize( L2 + E2 );  // Halfway vector
+    vec3 L2 = normalize( Lvec2 );   // Direction to the light source - second light
+    vec3 E2 = normalize( -pos2 );   // Direction to the eye/camera - second light
+    vec3 H2 = normalize( L2 + E2 );  // Halfway vector - second light
 
 float magOfLvec = length(Lvec);
 
