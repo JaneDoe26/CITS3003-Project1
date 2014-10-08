@@ -339,7 +339,7 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(-sceneObj.angles[0]) * RotateY(-sceneObj.angles[1]) * RotateZ(-sceneObj.angles[2]); // Implement code for part B here - take from sample solutions in labs 3&4
 
 
     // Set the model-view matrix for the shaders
@@ -392,7 +392,7 @@ display( void )
    SceneObject lightObj2 = sceneObjs[2]; 
    vec4 lightPosition2 = view*lightObj2.loc;
 
-   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition + ); CheckError();
+   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition ); CheckError();
 
     
     //what does the gluniform line do?
@@ -542,6 +542,8 @@ static void materialMenu(int id) {
   else { printf("Error in materialMenu\n"); }
 }
 
+// DOM MENU STUFF HERE
+
 static void adjustAngleYX(vec2 angle_yx) 
   {  sceneObjs[currObject].angles[1]+=angle_yx[0]; sceneObjs[currObject].angles[0]+=angle_yx[1]; }
 
@@ -669,7 +671,7 @@ static void makeMenu() {
   glutAddSubMenu("Lights",lightMenuId);
   
   //------------------------------------------------------------------------------------------------------------------------------------------------------
-  //ADDITIONAL FUNCTIONALITY
+  //ADDITIONAL FUNCTIONALITY - CAITLIN
   
   glutAddMenuEntry("Remove Object", 100);
   
@@ -680,6 +682,7 @@ static void makeMenu() {
   glutAddMenuEntry("Scale Objects Together", 103);
  
   //------------------------------------------------------------------------------------------------------------------------------------------------------
+  //ADDITIONAL FUNCTIONALITY - DOM
   
   
   glutAddMenuEntry("EXIT", 99);
