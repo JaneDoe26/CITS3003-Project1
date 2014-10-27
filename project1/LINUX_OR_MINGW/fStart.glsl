@@ -7,6 +7,7 @@ uniform mat4 ModelView;
 uniform mat4 Projection;
 uniform vec4 LightPosition;
 uniform vec4 LightPosition2;
+uniform float texScale;
 
 uniform float Shininess;
 
@@ -89,6 +90,6 @@ float distTerm2 = 1/(3 + 0.5*magOfLvec+ 0.5*magOfLvec*magOfLvec);
 
     // globalAmbient is independent of distance from the light source
     vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
-    gl_FragColor = vec4(globalAmbient  + ambient + diffuse + specular, 1.0)*texture2D( texture, texCoord * 2.0);
+    gl_FragColor = vec4(globalAmbient  + ambient + diffuse + specular, 1.0)*texture2D( texture, texCoord * 2.0 * texScale);
     gl_FragColor.a = 1.0;
 }
