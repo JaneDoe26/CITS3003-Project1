@@ -16,14 +16,15 @@ GLint windowHeight=640, windowWidth=960;
 // gnatidread.cpp is the CITS3003 "Graphics n Animation Tool Interface & Data Reader" code
 // This file contains parts of the code that you shouldn't need to modify (but, you can).
 #include "gnatidread.h"
+#include "gnatidread2.h"
 
 using namespace std;    // Import the C++ standard functions (e.g., min) 
 
 
 // IDs for the GLSL program and GLSL variables.
 GLuint shaderProgram; // The number identifying the GLSL shader program
-GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
-GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
+GLuint vPosition, vNormal, vTexCoord,vBoneIDs, vBoneWeights; // IDs for vshader input vars (from glGetAttribLocation)
+GLuint projectionU, modelViewU, uBoneTransforms; // IDs for uniform variables (from glGetUniformLocation)
 
 static float viewDist = 20.5; // Distance from the camera to the centre of the scene
 static float camRotSidewaysDeg=0; // rotates the camera sideways around the centre
@@ -40,12 +41,17 @@ mat4 rotateViewX; // matrix for rotation vertially - set in display function
 char lab[] = "Project1";
 char *programName = NULL; // Set in main 
 int numDisplayCalls = 0; // Used to calculate the number of frames per second
+int totalDisplayCalls = 0;
+
+int currTime = 0;
+int lastTime = 0;
 
 // -----Meshes----------------------------------------------------------
 // Uses the type aiMesh from ../../assimp--3.0.1270/include/assimp/mesh.h
 //                      (numMeshes is defined in gnatidread.h)
 aiMesh* meshes[numMeshes]; // For each mesh we have a pointer to the mesh to draw
 GLuint vaoIDs[numMeshes]; // and a corresponding VAO ID from glGenVertexArrays
+const aiScene* scenes[numMeshes];
 
 // -----Textures---------------------------------------------------------
 //                      (numTextures is defined in gnatidread.h)
@@ -67,6 +73,7 @@ typedef struct {
     int meshId;
     int texId;
     float texScale;
+  int frameNow;
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -75,6 +82,8 @@ SceneObject sceneObjs[maxObjects]; // An array storing the objects currently in 
 int nObjects=0; // How many objects are currenly in the scene.
 int currObject=-1; // The current object
 int toolObj = -1;  // The object currently being modified
+
+float frameSpeedModify = 1.0; //alters speed via frame rate
 
 //------------------------------------------------------------
 // Loads a texture by number, and binds it for later use.  
@@ -117,7 +126,9 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
     if(meshes[meshNumber] != NULL)
         return; // Already loaded
 
-    aiMesh* mesh = loadMesh(meshNumber);
+    const aiScene* scene = loadScene(meshNumber);
+    scenes[meshNumber] = scene;
+    aiMesh* mesh = scene->mMeshes[0];
     meshes[meshNumber] = mesh;
 
     glBindVertexArray( vaoIDs[meshNumber] );
@@ -161,6 +172,24 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
                            BUFFER_OFFSET(sizeof(float)*6*mesh->mNumVertices) );
     glEnableVertexAttribArray( vNormal );
     CheckError();
+
+     // Get boneIDs and boneWeights for each vertex from the imported mesh data
+    GLint boneIDs[mesh->mNumVertices][4];
+    GLfloat boneWeights[mesh->mNumVertices][4];
+    getBonesAffectingEachVertex(mesh, boneIDs, boneWeights);
+
+    GLuint buffers[2];
+    glGenBuffers( 2, buffers );  // Add two vertex buffer objects
+    
+    glBindBuffer( GL_ARRAY_BUFFER, buffers[0] ); CheckError();
+    glBufferData( GL_ARRAY_BUFFER, sizeof(int)*4*mesh->mNumVertices, boneIDs, GL_STATIC_DRAW ); CheckError();
+    glVertexAttribIPointer(vBoneIDs, 4, GL_INT, 0, BUFFER_OFFSET(0)); CheckError();
+    glEnableVertexAttribArray(vBoneIDs);     CheckError();
+    
+    glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
+    glBufferData( GL_ARRAY_BUFFER, sizeof(float)*4*mesh->mNumVertices, boneWeights, GL_STATIC_DRAW );
+    glVertexAttribPointer(vBoneWeights, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vBoneWeights);    CheckError();
 }
 
 // -----------------------------------------------------------------------------
@@ -267,8 +296,12 @@ void init( void )
     // Likewise, initialize the vertex texture coordinates attribute.  
     vTexCoord = glGetAttribLocation( shaderProgram, "vTexCoord" ); CheckError();
 
+    vBoneIDs = glGetAttribLocation( shaderProgram, "boneIDs");
+    vBoneWeights = glGetAttribLocation ( shaderProgram, "boneWeights"); CheckError();
+
     projectionU = glGetUniformLocation(shaderProgram, "Projection");
     modelViewU = glGetUniformLocation(shaderProgram, "ModelView");
+    uBoneTransforms = glGetUniformLocation(shaderProgram, "boneTransforms");
 
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
@@ -329,6 +362,27 @@ void drawMesh(SceneObject sceneObj) {
 
     // Activate the VAO for a mesh, loading if needed.
     loadMeshIfNotAlreadyLoaded(sceneObj.meshId); CheckError();
+
+    int nBones = meshes[sceneObj.meshId]->mNumBones;
+    if(nBones == 0)  nBones = 1;  // If no bones, just a single identity matrix is used
+
+    // get boneTransforms for the first (0th) animation at the given time (a float measured in frames)
+    //    (Replace <POSE_TIME> appropriately with a float expression giving the time relative to
+    //     the start of the animation, measured in frames, like the frame numbers in Blender.)
+    mat4 boneTransforms[nBones];     // was: mat4 boneTransforms[mesh->mNumBones];
+    currTime = glutGet(GLUT_ELAPSED_TIME)* 0.01;
+    float tempTime = (float)currTime - (float)lastTime;
+    /*
+    if(fmod((double)currTime, 1000.0/40.0) == 0){
+      sceneObj.frameNow++;
+      lastTime = currTime;
+    }
+    */
+
+    float framePos = fmod(currTime,40.0);
+    calculateAnimPose(meshes[sceneObj.meshId], scenes[sceneObj.meshId], 0, framePos, boneTransforms);
+    glUniformMatrix4fv(uBoneTransforms, nBones, GL_TRUE, (const GLfloat *)boneTransforms);
+
     glBindVertexArray( vaoIDs[sceneObj.meshId] ); CheckError();
 
     glDrawElements(GL_TRIANGLES, meshes[sceneObj.meshId]->mNumFaces * 3, GL_UNSIGNED_INT, NULL); CheckError();
@@ -339,6 +393,7 @@ void
 display( void )
 {
     numDisplayCalls++;
+    totalDisplayCalls++;
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     CheckError(); // May report a harmless GL_INVALID_OPERATION with GLEW on the first frame
@@ -381,6 +436,8 @@ display( void )
         glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb2 );
 
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine ); CheckError();
+	
+
 
         drawMesh(sceneObjs[i]);
 
@@ -680,6 +737,8 @@ void timer(int unused)
     char title[256];
     sprintf(title, "%s %s: %d Frames Per Second @ %d x %d",
             lab, programName, numDisplayCalls, windowWidth, windowHeight );
+
+    if(numDisplayCalls!=0) frameSpeedModify = (30/(float)numDisplayCalls)*400;
 
     glutSetWindowTitle(title);
 
